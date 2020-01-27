@@ -1,0 +1,144 @@
+#!/usr/bin/env python
+
+ANSIBLE_METADATA = {'status': ['preview'],
+                    'supported_by': 'community',
+                    'metadata_version': '1.0'}
+
+
+DOCUMENTATION = '''
+---
+module: maven_find_version
+short_description: Find and retreive artifact from provided list of repos
+    See https://github.com/thordendal/ansible_maven_find_version
+description: Find and get an artifact from provided list of nexus/artifactory repos
+             and versions using regular expressions
+author: CDEK, Aleksandr Tataurov
+options:
+    maven:
+        required: true
+        description:
+            - Base url of the maven repository
+    repos:
+        required: true
+        description:
+            - List of repos where to search for an artifact
+            - Defaults to '["public"]'
+    artifact_id:
+        required: true
+        description:
+            - Artifact name
+    group_id:
+        required: true
+        description:
+            - Artifact group_id
+    http_user:
+        required: false
+        description:
+            - If the storage need a basic authentication, the user name
+              can be provided here
+    http_pass:
+        required: false
+        description:
+            - If the storage need a basic authentication, the password
+              can be provided here
+'''
+
+EXAMPLES = '''
+    
+- name: Find version matching regexp
+  maven_find_version:
+    maven: http://repo.foobar.org/
+    artifact_id: backend
+    group_id: org.foobar.backend
+    version: "1.0-.*-335"
+    repos:
+      - release
+      - stage
+  register: versions
+
+- name: Find exact version for snapshot artifact
+  maven_find_version:
+    maven: http://repo.foobar.org
+    artifact_id: backend
+    group_id: org.foobar.backend
+    version: "snapshot"
+    repos:
+      - snapshots
+  register: version
+'''
+
+from ansible.module_utils.basic import *
+from ansible.module_utils.parsing.convert_bool import *
+import urllib2
+import xml.etree.ElementTree as ET
+
+
+def get_metadata(url, headers={}):
+    try:
+        request = urllib2.Request(url, None, headers)
+        response = urllib2.urlopen(request)
+    except urllib2.HTTPError as e:
+        return dict(code=e.code, error=e.reason, data=None)
+    else:
+        xml = response.read()
+        return dict(code=response.code, error=None, data=xml)
+
+
+def find_version(xml, version):
+    root = ET.fromstring(xml)
+
+    if re.match("snapshot$", version.lower()) or ("latest" in version.lower()):
+        for v in root.findall('./versioning/versions/version[last()]'):
+            return v.text
+
+    for v in root.findall('./versioning/versions/version'):
+        if re.match(version, v.text):
+            return v.text
+    return None
+
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            maven=dict(required=False),
+            repos=dict(required=False, default=["public"], type="list", elements="str"),
+            group_id=dict(required=True, type="str"),
+            artifact_id=dict(required=True, type="str"),
+            version=dict(required=True, type="str"),
+            http_user=dict(required=False),
+            http_pass=dict(required=False, no_log=True)
+        ),
+        supports_check_mode=False
+    )
+
+    maven = module.params['maven']
+    repos = module.params['repos']
+    group_id = module.params['group_id']
+    artifact_id = module.params['artifact_id']
+    version = module.params['version']
+
+    for repo in repos:
+        url = maven + repo + "/" + group_id.replace(".", "/") + "/" + artifact_id + "/maven-metadata.xml"
+
+        xml = get_metadata(url)['data']
+        if xml is None:
+            continue
+        else:
+            print("Successfully fetched repo {} from url {}".format(repo, url))
+            found_version = find_version(xml, version)
+            if found_version is not None:
+                module.exit_json(artifact_id=artifact_id,
+                                 version=found_version,
+                                 repo=repo,
+                                 group_id=group_id,
+                                 maven=maven,
+                                 msg="Found version {} in repo {}".format(found_version, repo),
+                                 changed=True)
+    module.fail_json(artifact_id=artifact_id,
+                     group_id=group_id,
+                     maven=maven,
+                     msg="Version {} was not found in repos {}".format(version, repos),
+                     changed=False)
+
+
+main()

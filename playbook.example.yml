@@ -1,0 +1,23 @@
+---
+
+- hosts: localhost
+  tasks:
+    - name: Find some unknown version
+      maven_find_version:
+        maven: http://repo.foobar.org/
+        group_id: org.foobar.backend
+        artifact_name: backend
+        version: "^.*-15$"
+        repos:
+          - releases
+          - stage
+      register: versions
+
+    - name: Retreive maven artifact using given parameters
+      maven_artifact:
+        repository_url: "{{ versions.maven }}{{ versions.repo }}"
+        artifact_id: "{{ versions.artifact_id }}"
+        group_id: "{{ versions.group_id }}"
+        version: "{{ versions.version }}"
+        extension: jar
+        dest: /tmp/job/
