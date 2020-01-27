@@ -5,9 +5,9 @@ using python regular expressions and returns it for you to use further in
 your role or playbook.
 
 ## Use case:
-When you can't rely on 'exactness' of artifact version or repo name, provided
-to you, but you got list of repos and regex for version (and also you are also
-sure that there will be only one matching version in your list of repos)
+When you can't rely on 'exactness' of artifact version or repo name provided
+to you but you got list of repos and regex for version (and you are also sure
+that there will be only one matching version in your list of repos)
 
 ## Usage:
 ```yaml
@@ -39,4 +39,4 @@ sure that there will be only one matching version in your list of repos)
 * Actually retreiving artifacts or invoking `maven_artifact` module after finding version
 * Better error handling
 
-Anyway, issues and pull requests of any kind are welcome.
+Issues and pull requests of any kind are welcome.
