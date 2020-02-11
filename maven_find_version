@@ -69,19 +69,31 @@ EXAMPLES = '''
 
 from ansible.module_utils.basic import *
 from ansible.module_utils.parsing.convert_bool import *
-import urllib2
+import sys
 import xml.etree.ElementTree as ET
 
 
 def get_metadata(url, headers={}):
-    try:
-        request = urllib2.Request(url, None, headers)
-        response = urllib2.urlopen(request)
-    except urllib2.HTTPError as e:
-        return dict(code=e.code, error=e.reason, data=None)
+    if (sys.version_info > (3,0)):
+        import urllib
+        try:
+            response = urllib.request.urlopen(url, None, headers)
+        except urllib.error.HTTPError as e:
+            return dict(code=e.code, error=e.reason, data=None)
+        else:
+            xml = response.read()
+            return dict(code=response.code, error=None, data=xml)
+
     else:
-        xml = response.read()
-        return dict(code=response.code, error=None, data=xml)
+        import urllib2
+        try:
+            request = urllib2.Request(url, None, headers)
+            response = urllib2.urlopen(request)
+        except urllib2.HTTPError as e:
+            return dict(code=e.code, error=e.reason, data=None)
+        else:
+            xml = response.read()
+            return dict(code=response.code, error=None, data=xml)
 
 
 def find_version(xml, version):
