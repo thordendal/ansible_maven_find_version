@@ -74,8 +74,8 @@ import xml.etree.ElementTree as ET
 
 
 def get_metadata(url, headers={}):
-    if (sys.version_info > (3,0)):
-        import urllib
+    if sys.version_info > (3, 0):
+        import urllib.request, urllib.error
         try:
             response = urllib.request.urlopen(url, None, headers)
         except urllib.error.HTTPError as e:
