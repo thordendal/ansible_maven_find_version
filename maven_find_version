@@ -77,7 +77,8 @@ def get_metadata(url, headers={}):
     if sys.version_info > (3, 0):
         import urllib.request, urllib.error
         try:
-            response = urllib.request.urlopen(url, None, headers)
+            r = urllib.request.Request(url, None, headers)
+            response = urllib.request.urlopen(r)
         except urllib.error.HTTPError as e:
             return dict(code=e.code, error=e.reason, data=None)
         else:
@@ -87,8 +88,8 @@ def get_metadata(url, headers={}):
     else:
         import urllib2
         try:
-            request = urllib2.Request(url, None, headers)
-            response = urllib2.urlopen(request)
+            r = urllib2.Request(url, None, headers)
+            response = urllib2.urlopen(r)
         except urllib2.HTTPError as e:
             return dict(code=e.code, error=e.reason, data=None)
         else:
